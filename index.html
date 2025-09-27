@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulador de Derivadas – FUKL (Temas 1, 2 y 4)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+  <style>
+    :root{
+      --brand:#4B1D6B; --bg1:#0F0A1F; --bg2:#1A1433; --card:#18112A; --ink:#EDECF4;
+      --muted:#A7A2BD; --accent:#FF2F8E; --cta:#B7F000; --highlight:#FFE247;
+      --good:#22C55E; --warn:#F59E0B; --bad:#EF4444;
+      --deriv:#FACC15; --fx:#7DD3FC; --tan:#22C55E; --bd:#2A2243;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(120deg,var(--bg1),var(--bg2));
+      font:15px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--ink)}
+    .container{max-width:1200px;margin:24px auto;padding:24px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    header h1{font-size:20px;margin:0;font-weight:800;letter-spacing:.2px}
+    header .tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--highlight);color:#3a3100}
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:18px}
+    .card{background:rgba(24,17,42,.88);border:1px solid var(--bd);border-radius:16px;padding:16px;backdrop-filter: blur(4px)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select,button{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#140F26;color:var(--ink);font-size:14px}
+    input::placeholder{color:#7f78a5}
+    button{cursor:pointer;font-weight:700;letter-spacing:.2px}
+    button.primary{background:linear-gradient(90deg,var(--accent),#FF6DB1);color:#16071A;border:none}
+    button.primary:hover{filter:brightness(1.06)}
+    button.ghost{background:#140F26;border:1px solid var(--bd)}
+    button.ghost:hover{border-color:#4A3B7A}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;border:1px solid #3A2E63;color:#DCD7EE}
+    .pill.good{border-color:rgba(34,197,94,.35);color:#CFF7D8}
+    .pill.warn{border-color:rgba(245,158,11,.35);color:#FDE69C}
+    .pill.bad{border-color:rgba(239,68,68,.35);color:#FFD2D2}
+    .muted{color:var(--muted)}
+    .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: 15px !important;}
+    canvas{width:100%;height:420px;border-radius:12px;background:#120C22;border:1px solid var(--bd); cursor: crosshair;}
+    canvas:active { cursor: grabbing;}
+    .footer{margin-top:12px;font-size:12px;color:#b8b3ce}
+    .kbd{font:600 12px ui-monospace,monospace;background:#140F26;border:1px solid var(--bd);border-bottom-width:2px;border-radius:6px;padding:2px 6px}
+    #symbolic-result{ margin-top: 8px; border-left: 4px solid var(--deriv); padding: 12px; }
+    #symbolic-result code { font-size: 16px; color: var(--deriv); word-break: break-all; }
+    details{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;background:#140F26}
+    details summary{cursor:pointer;color:#E2DEF3;font-weight:700}
+    .btn-mini{padding:6px 10px;border-radius:10px;border:1px solid var(--bd);background:#140F26;color:var(--ink);font-size:13px;cursor:pointer}
+    .btn-mini + .btn-mini{margin-left:6px}
+    a.ref{color:#A0E1FF;text-decoration:none;border-bottom:1px dashed #A0E1FF}
+    @media (max-width: 960px){.grid{grid-template-columns:1fr}canvas{height:360px}}
+    #konrad-rail{
+      position:fixed; right:0; top:30%; height:240px; width:44px;
+      background:var(--cta); color:#1A1A1A; font:800 12px system-ui;
+      writing-mode: vertical-rl; text-orientation: mixed;
+      display:flex; align-items:center; justify-content:center;
+      border-top-left-radius:10px; border-bottom-left-radius:10px;
+      box-shadow:-4px 6px 18px rgba(0,0,0,.25); z-index:50;
+    }
+    #konrad-rail::after{ content:"QUIERO MÁS INFORMACIÓN"; letter-spacing:.5px; }
+  </style>
+</head>
+<body>
+  <div id="konrad-rail" aria-hidden="true"></div>
+
+  <div class="container">
+    <header>
+      <h1>Simulador de Derivadas – Fundación Universitaria Konrad Lorenz</h1>
+      <span class="tag">Cálculo I · Módulo 3</span>
+    </header>
+
+    <div class="grid">
+      <!-- IZQUIERDA -->
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <section class="card" aria-labelledby="controls-title">
+          <h2 id="controls-title" style="margin:0 0 12px 0;font-size:16px">Entradas</h2>
+          <label for="expr">Función f(x) <span class="muted">(sin, cos, tan, ln, log10, sqrt, abs, exp, pi, e)</span></label>
+          <input id="expr" class="mono" placeholder="x^2" value="x^2" />
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label for="a">Punto a evaluar a</label>
+              <input id="a" type="number" step="any" value="1.5" />
+            </div>
+            <div>
+              <label for="range">Ventana (±)</label>
+              <input id="range" type="number" step="any" value="5" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label for="derivative-order">Orden de derivada</label>
+              <select id="derivative-order">
+                <option value="1" selected>1ra derivada (f')</option>
+                <option value="2">2da derivada (f'')</option>
+                <option value="3">3ra derivada (f''')</option>
+              </select>
+            </div>
+            <div>
+              <label for="exampleSelector">Cargar Ejemplo Rápido</label>
+              <select id="exampleSelector"></select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button type="button" class="primary" id="btnPlot">Graficar</button>
+            <button type="button" class="ghost" id="btnResetView">Restablecer Vista</button>
+          </div>
+          <p class="footer">Uso: <span class="kbd">Click</span> para fijar <span class="mono">a</span>; <span class="kbd">arrastrar</span> para afinar; <span class="kbd">scroll</span> para zoom.</p>
+        </section>
+
+        <section class="card" id="symbolic-result" aria-live="polite">
+          <h3 style="margin:0 0 8px 0; font-size:16px; color:var(--muted);">Derivada simbólica</h3>
+          <p id="symbolic-output" class="mono" style="margin:0;"><code>...</code></p>
+        </section>
+
+        <!-- Guía Temática 1 + Ejercicios -->
+        <section class="card" aria-labelledby="guide-title">
+          <h2 id="guide-title" style="margin:0 0 10px 0;font-size:16px">Guía rápida · Temática 1</h2>
+
+          <details open>
+            <summary>Ejemplos (Escenas 1–4)</summary>
+            <div style="margin:10px 0">
+              <button class="btn-mini" data-expr="x^2" data-a="3">f(x)=x^2 (a=3)</button>
+              <button class="btn-mini" data-expr="x^3" data-a="2">x^3 (a=2)</button>
+              <button class="btn-mini" data-expr="sin(x)" data-a="0">sin(x) (a=0)</button>
+              <button class="btn-mini" data-expr="cos(x)" data-a="0">cos(x) (a=0)</button>
+              <button class="btn-mini" data-expr="exp(x)" data-a="0">e^x (a=0)</button>
+              <button class="btn-mini" data-expr="ln(x)" data-a="1">ln(x) (a=1)</button>
+              <button class="btn-mini" data-expr="abs(x)" data-a="0">|x| (a=0)</button>
+            </div>
+            <p class="muted" style="margin: 6px 2px 0">Tip: con |x| en 0 la tangente no se define (no hay derivada).</p>
+          </details>
+
+          <details>
+            <summary>Ejercicios para practicar</summary>
+            <ol style="margin:10px 0 0 18px">
+              <li>Usa la definición para estimar \(f'(3)\) si \(f(x)=x^2\). <button class="btn-mini" data-expr="x^2" data-a="3">Cargar</button></li>
+              <li>Calcula \(f'(2)\) para \(f(x)=x^3\). <button class="btn-mini" data-expr="x^3" data-a="2">Cargar</button></li>
+              <li>Determina \(f'(0)\) si \(f(x)=\sin x\). <button class="btn-mini" data-expr="sin(x)" data-a="0">Cargar</button></li>
+              <li>¿Existe \(f'(0)\) para \(f(x)=|x|\)? <button class="btn-mini" data-expr="abs(x)" data-a="0">Cargar</button></li>
+              <li>Halla \(f'(1)\) si \(f(x)=\ln x\). <button class="btn-mini" data-expr="ln(x)" data-a="1">Cargar</button></li>
+            </ol>
+          </details>
+        </section>
+
+        <!-- Guía Temática 2 (Biblioteca) -->
+        <section class="card" aria-labelledby="guide2-title">
+          <h2 id="guide2-title" style="margin:0 0 10px 0;font-size:16px">Guía rápida · Temática 2 (Biblioteca)</h2>
+
+          <details open>
+            <summary>Ejemplos por tipo de función</summary>
+            <div style="margin:10px 0">
+              <button class="btn-mini" data-expr="(x^2+1)/(x+1)" data-a="0">Cociente: (x^2+1)/(x+1)</button>
+              <button class="btn-mini" data-expr="x^2*sin(x)" data-a="0">Producto: x^2·sin x</button>
+              <button class="btn-mini" data-expr="sin(3*x^2)" data-a="1">Cadena: sin(3x^2)</button>
+              <button class="btn-mini" data-expr="sqrt(5*x+1)" data-a="0.5">Cadena: √(5x+1)</button>
+              <button class="btn-mini" data-expr="tan(2*x)" data-a="1">Trig: tan(2x)</button>
+              <button class="btn-mini" data-expr="exp(2*x)+3*ln(x^2+1)" data-a="1">Exp+log</button>
+              <button class="btn-mini" data-expr="x*exp(x^2)" data-a="1">Combinada: x·e^{x^2}</button>
+              <button class="btn-mini" data-expr="ln(sin(x^2))" data-a="1">Combinada: ln(sin(x^2))</button>
+            </div>
+          </details>
+
+          <details>
+            <summary>Ejercicios para practicar en el simulador</summary>
+            <ol style="margin:10px 0 0 18px">
+              <li>\(f(x)=x^2\sin x\) en \(a=0\). <button class="btn-mini" data-expr="x^2*sin(x)" data-a="0">Cargar</button></li>
+              <li>\(f(x)=(x^3)/(x^2+1)\) en \(a=1\). <button class="btn-mini" data-expr="(x^3)/(x^2+1)" data-a="1">Cargar</button></li>
+              <li>\(f(x)=\sin(3x^2)\) en \(a=1\). <button class="btn-mini" data-expr="sin(3*x^2)" data-a="1">Cargar</button></li>
+            </ol>
+          </details>
+        </section>
+
+        <!-- Guía Temática 4 (Aplicaciones) -->
+        <section class="card" aria-labelledby="guide4-title">
+          <h2 id="guide4-title" style="margin:0 0 10px 0;font-size:16px">Guía rápida · Temática 4 (Aplicaciones de la derivada)</h2>
+
+          <details open>
+            <summary>Ejemplos guiados</summary>
+            <div style="margin:10px 0">
+              <!-- 4.1 Tasas relacionadas -->
+              <button class="btn-mini" data-expr="(4/3)*pi*x^3" data-a="2">Tasas: Volumen esfera V=(4/3)πr^3</button>
+              <!-- 4.2 Aproximaciones lineales -->
+              <button class="btn-mini" data-expr="sqrt(x)" data-a="4">Aprox. lineal: √x en a=4</button>
+              <!-- 4.3 Máximos y mínimos -->
+              <button class="btn-mini" data-expr="x^3-3*x^2+2" data-a="0">Máx/Mín: x^3-3x^2+2</button>
+              <button class="btn-mini" data-expr="x^4-2*x^2" data-a="0">Máx/Mín: x^4-2x^2</button>
+              <!-- 4.4 Teorema del valor medio -->
+              <button class="btn-mini" data-expr="x^2" data-a="2.5">Valor medio en [1,4] (x^2)</button>
+              <!-- 4.5 Forma de un gráfico -->
+              <button class="btn-mini" data-expr="x^3-3*x^2" data-a="1">Forma del gráfico: x^3-3x^2</button>
+              <!-- 4.6 Asíntotas -->
+              <button class="btn-mini" data-expr="x^2/(x+1)" data-a="5">Asíntotas: x^2/(x+1)</button>
+              <!-- 4.7 Optimización aplicada -->
+              <button class="btn-mini" data-expr="x*(10-x)" data-a="5">Optimización: área rectángulo (P=20)</button>
+              <!-- 4.8 L'Hôpital -->
+              <button class="btn-mini" data-expr="sin(x)/x" data-a="0">L'Hôpital: sin(x)/x</button>
+              <!-- 4.9 Newton -->
+              <button class="btn-mini" data-expr="x^2-2" data-a="1">Newton: raíz de 2</button>
+            </div>
+            <p class="muted" style="margin:6px 2px 0">
+              Tip: usa <b>orden 1</b> para pendientes y <b>orden 2</b> para concavidad. En “Valor medio”, compara pendiente de secante con la tangente.
+            </p>
+          </details>
+
+          <details>
+            <summary>Práctica sugerida</summary>
+            <ol style="margin:10px 0 0 18px">
+              <li>\(f(x)=x^3-3x\) en \([-2,2]\): extremos absolutos. <button class="btn-mini" data-expr="x^3-3*x" data-a="-1">Cargar</button></li>
+              <li>\(f(x)=\dfrac{x^2+1}{x+1}\): candidatos y dominio. <button class="btn-mini" data-expr="(x^2+1)/(x+1)" data-a="0">Cargar</button></li>
+              <li>\(f(x)=\sin x - \tfrac12 x\)\,: explora picos/vales. <button class="btn-mini" data-expr="sin(x)-0.5*x" data-a="1.5">Cargar</button></li>
+            </ol>
+          </details>
+        </section>
+
+        <section class="card" aria-labelledby="refs-title">
+          <h2 id="refs-title" style="margin:0 0 8px 0;font-size:16px">Referencias (OVA)</h2>
+          <ul style="margin:8px 0 0 16px">
+            <li><a class="ref" href="https://aprendeconalf.es/docencia/calculo/manual/derivadas-una-variable/" target="_blank" rel="noopener">Aprende con Alf – Derivadas en una variable</a></li>
+            <li><a class="ref" href="https://www.uaeh.edu.mx/docencia/P_Presentaciones/prepa_ixtlahuaco/2019/4/Calculo.pdf" target="_blank" rel="noopener">UAEH – Presentación “Cálculo”</a></li>
+            <li><a class="ref" href="https://openstax.org/books/cálculo-volumen-1/pages/4-introduccion" target="_blank" rel="noopener">OpenStax – Cap. 4 Aplicaciones de la derivada</a></li>
+          </ul>
+        </section>
+      </div>
+
+      <!-- DERECHA -->
+      <section class="card" aria-labelledby="results-title">
+        <h2 id="results-title" style="margin:0 0 8px 0;font-size:16px">Gráfica y resultado</h2>
+
+        <div class="row" style="margin:6px 0 10px">
+          <label><input type="checkbox" id="chkShowF" checked> Mostrar f(x)</label>
+          <label><input type="checkbox" id="chkShowDeriv" checked> Mostrar f'(x) / f^{(n)}(x)</label>
+          <label><input type="checkbox" id="chkShowTan" checked> Mostrar tangente en x=a</label>
+        </div>
+
+        <div id="status" aria-live="polite" style="margin-bottom:6px; min-height:28px;"></div>
+        <div id="tangent-eq" class="mono" style="margin-bottom:10px;min-height:20px;"></div>
+
+        <canvas id="plot"></canvas>
+        <p class="footer">Tip: clic en la gráfica fija <span class="mono">a</span>; arrastra para ajustar fino. Exporta tu evidencia.</p>
+
+        <div class="row" style="margin-top:12px">
+          <button type="button" class="ghost" id="btnPNG">Descargar PNG</button>
+          <button type="button" class="ghost" id="btnPDF">Descargar PDF</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+/* ===== utilidades ===== */
+const $ = s => document.querySelector(s);
+const on = (el,ev,cb)=> el.addEventListener(ev,cb);
+function roundPretty(v,p=6){if(!isFinite(v))return String(v);const a=Math.abs(v);if(a===0)return'0';if(a<1e-4||a>=1e6)return v.toExponential(3);return Number(v.toFixed(p)).toString();}
+function debounce(fn, ms=180){let t;return (...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),ms);};}
+
+/* ===== estado ===== */
+const canvas=$('#plot'),ctx=canvas.getContext('2d');
+let state = { fn:null, fn_deriv:null, a:1.5, range:5, order:1, view:{yCenter:0,yRange:10}, mouse:{dragging:false,startX:0} };
+
+/* ===== cálculo ===== */
+function safeEval(fn,x){try{const y=fn.evaluate({x:x});return isFinite(y)?y:NaN;}catch{return NaN;}}
+function getNumericalDerivative(fn, a, order = 1) {
+  if (order === 0) return safeEval(fn, a);
+  const base = Math.max(1e-6, Math.abs(a) * 1e-6);
+  const h = base;
+  const fPrev = (x) => getNumericalDerivative(fn, x, order - 1);
+  const f1 = fPrev(a - 2*h), f2 = fPrev(a - h), f3 = fPrev(a + h), f4 = fPrev(a + 2*h);
+  const num = (-f4 + 8*f3 - 8*f2 + f1), den = 12*h;
+  const val = num / den;
+  if (isFinite(val)) return val;
+  return (fPrev(a + h) - fPrev(a - h)) / (2*h);
+}
+function getSymbolicDerivative(expr, order = 1) {
+  try { let node = math.parse(expr); for (let i=0;i<order;i++) node = math.derivative(node,'x'); return node.toString(); }
+  catch (e) { return "Error en cálculo simbólico."; }
+}
+
+/* ===== dibujo ===== */
+function resizeAndDraw(){
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.clientWidth*dpr; canvas.height=canvas.clientHeight*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0); draw();
+}
+window.addEventListener('resize', resizeAndDraw);
+
+function getNiceStep(range){let e=Math.floor(Math.log10(range/5)),s=Math.pow(10,e);if((range/s)<2)s/=5;else if((range/s)<5)s/=2;return s;}
+function drawAxes(W,H,xmin,xmax,ymin,ymax,x2px,y2px){
+  ctx.strokeStyle="#444"; ctx.lineWidth=1; ctx.fillStyle="#C9C5DF"; ctx.font="12px monospace";
+  const y0=y2px(0); if(y0>0&&y0<H){ctx.beginPath();ctx.moveTo(0,y0);ctx.lineTo(W,y0);ctx.stroke();}
+  const stepX=getNiceStep(xmax-xmin);
+  for(let x=Math.ceil(xmin/stepX)*stepX;x<=xmax;x+=stepX){
+    const px=x2px(x); if(px>0&&px<W){ctx.beginPath();ctx.moveTo(px,y0-4);ctx.lineTo(px,y0+4);ctx.stroke();ctx.fillText(roundPretty(x,2),px+4,y0-6);}
+  }
+  const x0=x2px(0); if(x0>0&&x0<W){ctx.beginPath();ctx.moveTo(x0,0);ctx.lineTo(x0,H);ctx.stroke();}
+  const stepY=getNiceStep(ymax-ymin);
+  for(let y=Math.ceil(ymin/stepY)*stepY;y<=ymax;y+=stepY){
+    const py=y2px(y); if(py>0&&py<H){ctx.beginPath();ctx.moveTo(x0-4,py);ctx.lineTo(x0+4,py);ctx.stroke();ctx.fillText(roundPretty(y,2),x0+6,py+4);}
+  }
+}
+function plotCurve(xs, ys, x2px, y2px, color, lineWidth){
+  ctx.strokeStyle=color; ctx.lineWidth=lineWidth; ctx.beginPath();
+  let pen=false; for(let i=0;i<xs.length;i++){ const px=x2px(xs[i]), py=y2px(ys[i]);
+    if(isFinite(py)){ if(!pen){ctx.moveTo(px,py);pen=true;} else ctx.lineTo(px,py);} else pen=false; }
+  ctx.stroke();
+}
+function legend(items){
+  if(!items.length) return;
+  const pad=8, x=10, y=10, lh=18;
+  ctx.font="12px system-ui, sans-serif"; ctx.textBaseline='top';
+  let h=items.length*lh+pad*2, w=0;
+  items.forEach(it=>{ w=Math.max(w, ctx.measureText(it.text).width); });
+  w+=40; ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(x,y,w,h);
+  items.forEach((it,i)=>{ const yy=y+pad+i*lh;
+    ctx.fillStyle=it.color; ctx.fillRect(x+8, yy+2, 22, 12);
+    ctx.fillStyle='#e5e7eb'; ctx.fillText(it.text, x+36, yy+1);
+  });
+}
+function draw(){
+  if(!state.fn){ctx.clearRect(0,0,canvas.width,canvas.height);return;}
+  const styles = getComputedStyle(document.documentElement);
+  const COL_FX  = styles.getPropertyValue('--fx').trim()    || '#7dd3fc';
+  const COL_DER = styles.getPropertyValue('--deriv').trim() || '#facc15';
+  const COL_TAN = styles.getPropertyValue('--tan').trim()   || '#22c55e';
+
+  const showF = $('#chkShowF').checked;
+  const showD = $('#chkShowDeriv').checked;
+  const showT = $('#chkShowTan').checked;
+
+  const { fn, fn_deriv, a, range, order, view } = state;
+  const W=canvas.clientWidth, H=canvas.clientHeight;
+  const xmin=a-range, xmax=a+range;
+
+  const N=600, xs=[], ys_f=[], ys_d=[];
+  for(let i=0;i<N;i++){
+    const x=xmin+(xmax-xmin)*i/(N-1);
+    xs.push(x); ys_f.push(safeEval(fn,x)); ys_d.push(fn_deriv ? safeEval(fn_deriv,x) : NaN);
+  }
+  const pool=[]; if(showF) pool.push(...ys_f); if(showD && fn_deriv) pool.push(...ys_d);
+  const finite = pool.filter(isFinite);
+  if(finite.length){ let ymin=Math.min(...finite), ymax=Math.max(...finite);
+    if(ymin===ymax){ymin-=1;ymax+=1;} const pad=(ymax-ymin)*0.1||1;
+    view.yCenter=(ymin+ymax)/2; view.yRange=(ymax-ymin)/2+pad;
+  }
+  const ymin=view.yCenter-view.yRange, ymax=view.yCenter+view.yRange;
+  const x2px=x=>(x-xmin)/(xmax-xmin)*W; const y2px=y=>H-(y-ymin)/(ymax-ymin)*H;
+
+  ctx.clearRect(0,0,W,H); drawAxes(W,H,xmin,xmax,ymin,ymax,x2px,y2px);
+
+  if(showF) plotCurve(xs, ys_f, x2px, y2px, COL_FX, 2.5);
+  if(showD && fn_deriv) plotCurve(xs, ys_d, x2px, y2px, COL_DER, 2);
+
+  const fa=safeEval(fn,a), fpa=getNumericalDerivative(fn,a,1);
+  if(showT && isFinite(fa) && isFinite(fpa)){
+    const yL=fa+fpa*(xmin-a), yR=fa+fpa*(xmax-a);
+    ctx.strokeStyle=COL_TAN; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x2px(xmin),y2px(yL)); ctx.lineTo(x2px(xmax),y2px(yR)); ctx.stroke();
+    ctx.fillStyle='#f43f5e'; ctx.beginPath(); ctx.arc(x2px(a),y2px(fa),6,0,2*Math.PI); ctx.fill();
+  }
+  const items=[]; if(showF) items.push({color:COL_FX,text:'f(x)'}); 
+  if(showD && state.order===1) items.push({color:COL_DER,text:"f'(x)"}); 
+  if(showD && state.order>1) items.push({color:COL_DER,text:`f^{(${state.order})}(x)`});
+  if(showT) items.push({color:COL_TAN,text:'Tangente en x=a'}); legend(items);
+
+  const val = getNumericalDerivative(fn, a, state.order);
+  updateStatus(a, val, state.order);
+}
+function updateStatus(a, val, order) {
+  const deriv_notation = 'f' + "'".repeat(order);
+  const statusEl = $('#status'); const teqEl = $('#tangent-eq');
+  if (isFinite(val)) {
+    statusEl.innerHTML = `<span class="pill good" style="font-family:monospace; font-size:14px;">
+      ${deriv_notation}(${roundPretty(a,3)}) ≈ ${roundPretty(val,6)}
+    </span>`;
+  } else {
+    statusEl.innerHTML = `<span class="pill bad">La derivada de orden ${order} no se puede calcular en a=${roundPretty(a,3)}</span>`;
+  }
+  const fa = state.fn ? safeEval(state.fn, a) : NaN;
+  const fpa = state.fn ? getNumericalDerivative(state.fn, a, 1) : NaN;
+  teqEl.textContent = (isFinite(fa) && isFinite(fpa))
+    ? `Tangente: y = ${roundPretty(fa,6)} + ${roundPretty(fpa,6)}·(x - ${roundPretty(a,6)})`
+    : '';
+}
+
+/* ===== controlador ===== */
+const run = ()=>{
+  const expr = $('#expr').value;
+  state.a = parseFloat($('#a').value);
+  state.range = Math.max(0.1, parseFloat($('#range').value));
+  state.order = parseInt($('#derivative-order').value, 10);
+
+  try {
+    state.fn = math.parse(expr).compile();
+    const sym = getSymbolicDerivative(expr, state.order);
+    $('#symbolic-output').innerHTML = `<code>${sym}</code>`;
+    state.fn_deriv = math.parse(sym).compile();
+  } catch (e) {
+    state.fn = null; state.fn_deriv = null;
+    $('#symbolic-output').innerHTML = `<code>Error en la función.</code>`;
+  }
+  const testFa = state.fn ? safeEval(state.fn, state.a) : NaN;
+  if (!isFinite(testFa)) {
+    $('#status').innerHTML = `<span class="pill bad">⚠️ f(a) no está definida en a=${roundPretty(state.a,3)}. Revisa el dominio.</span>`;
+    $('#tangent-eq').textContent='';
+  }
+  draw();
+};
+const runDeb = debounce(run,180);
+function setExprA(expr,a){ $('#expr').value=expr; $('#a').value=a; run(); }
+
+/* ===== eventos ===== */
+on($('#btnPlot'),'click', run);
+on($('#btnResetView'),'click',()=>{ $('#range').value=5; $('#a').value=1.5; $('#derivative-order').value=1; run(); });
+['input','change'].forEach(evt=>{
+  on($('#expr'), evt, evt==='input'?runDeb:run);
+  on($('#a'), evt, evt==='input'?runDeb:run);
+  on($('#range'), evt, evt==='input'?runDeb:run);
+});
+on($('#derivative-order'),'change', run);
+['chkShowF','chkShowDeriv','chkShowTan'].forEach(id=> on($('#'+id),'change', draw));
+
+on(canvas,'mousedown',e=>{
+  if(e.button!==0) return; state.mouse.dragging=true; state.mouse.startX=e.clientX;
+  const rect=canvas.getBoundingClientRect(); const x_px=e.clientX-rect.left;
+  const xmin=state.a-state.range, xmax=state.a+state.range;
+  const newA=xmin + (x_px / canvas.clientWidth) * (xmax - xmin);
+  $('#a').value = roundPretty(newA,6); state.a=newA; draw();
+});
+on(window,'mousemove',e=>{
+  if(!state.mouse.dragging) return;
+  const dx=e.clientX-state.mouse.startX; const perpx=(state.range*2)/canvas.clientWidth;
+  const newA=state.a + dx*perpx; $('#a').value=roundPretty(newA,6); state.a=newA; state.mouse.startX=e.clientX; draw();
+});
+on(window,'mouseup',()=>{state.mouse.dragging=false;});
+on(canvas,'wheel',e=>{
+  e.preventDefault(); const factor=e.deltaY<0?0.8:1.25;
+  $('#range').value = roundPretty(Math.max(0.01, state.range*factor),3); run();
+});
+
+/* ===== exportar ===== */
+function downloadImage(){resizeAndDraw();const a=document.createElement('a');a.download=`derivada_${$('#expr').value.replace(/[^a-z0-9]/gi,'_')}.png`;a.href=canvas.toDataURL('image/png');a.click();}
+function downloadPDF(){
+  resizeAndDraw();
+  const dataUrl=canvas.toDataURL('image/png');
+  const derivResult=$('#status').innerText;
+  const symResult=$('#symbolic-output').innerText;
+  const fa = state.fn ? safeEval(state.fn, state.a) : NaN;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Reporte de Derivada</title>
+  <style>body{font-family:system-ui,sans-serif;margin:40px;background:#f8f9fa}
+  h1{color:#1e293b;font-size:24px;border-bottom:2px solid #e2e8f0;padding-bottom:10px}
+  .card{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:20px}
+  img{max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px;margin-top:20px}
+  p{margin:8px 0;font-size:16px}code{background:#e2e8f0;padding:2px 6px;border-radius:4px;font-family:monospace;word-break:break-all;}
+  @media print{@page{margin:1cm}body{background:white}}</style></head>
+  <body><h1>Simulador de Derivadas – Reporte</h1>
+  <div class="card">
+    <p><b>Función:</b> <code>f(x)=${$('#expr').value}</code></p>
+    <p><b>Orden derivada:</b> ${state.order}</p>
+    <p><b>Solución simbólica:</b> <code>${symResult}</code></p>
+    <p><b>Punto evaluado:</b> <code>a=${roundPretty(state.a,6)}</code></p>
+    <p><b>f(a):</b> <code>${roundPretty(fa,6)}</code></p>
+    <p><b>Resultado numérico:</b> <code>${derivResult}</code></p>
+  </div><img src="${dataUrl}" alt="Gráfica de la derivada"></body></html>`;
+  const w=window.open('','_blank'); w.document.open(); w.document.write(html); w.document.close(); setTimeout(()=>{w.print();w.close();},500);
+}
+on($('#btnPNG'),'click',downloadImage);
+on($('#btnPDF'),'click',downloadPDF);
+
+/* ===== presets ===== */
+const EXAMPLES=[
+  {n:'x^2 (a=1.5)',e:'x^2',a:1.5},
+  {n:'x^3 (a=2)',e:'x^3',a:2},
+  {n:'sin(x) (a=0)',e:'sin(x)',a:0},
+  {n:'cos(x) (a=0)',e:'cos(x)',a:0},
+  {n:'e^x (a=0)',e:'exp(x)',a:0},
+  {n:'ln(x) (a=1)',e:'ln(x)',a:1},
+  {n:'1/x (a=2)',e:'1/x',a:2},
+  {n:'|x| (a=0)',e:'abs(x)',a:0}
+];
+// Tema 4 – añadidos al selector rápido
+EXAMPLES.push(
+  {n:'T4 · V esfera (tasas)', e:'(4/3)*pi*x^3', a:2},
+  {n:'T4 · √x (aprox. a=4)',  e:'sqrt(x)', a:4},
+  {n:'T4 · x^3-3x^2+2 (máx/mín)', e:'x^3-3*x^2+2', a:0},
+  {n:'T4 · x^4-2x^2 (máx 0/min ±1)', e:'x^4-2*x^2', a:0},
+  {n:'T4 · Valor medio x^2', e:'x^2', a:2.5},
+  {n:'T4 · Forma del gráfico', e:'x^3-3*x^2', a:1},
+  {n:'T4 · Asíntotas x^2/(x+1)', e:'x^2/(x+1)', a:5},
+  {n:'T4 · Optimización x(10-x)', e:'x*(10-x)', a:5},
+  {n:'T4 · L’Hôpital sin(x)/x', e:'sin(x)/x', a:0},
+  {n:'T4 · Newton x^2-2', e:'x^2-2', a:1}
+);
+
+function initExamples(){
+  const sel=$('#exampleSelector');
+  sel.innerHTML='<option value="">Cargar Ejemplo Rápido</option>';
+  EXAMPLES.forEach((ex,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=ex.n; sel.appendChild(o); });
+  on(sel,'change',e=>{ if(e.target.value==='') return; const ex=EXAMPLES[e.target.value];
+    $('#expr').value=ex.e; $('#a').value=ex.a; run(); sel.value=''; });
+  document.querySelectorAll('.btn-mini[data-expr]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ setExprA(btn.getAttribute('data-expr'), parseFloat(btn.getAttribute('data-a'))); });
+  });
+}
+
+/* ===== Precarga por URL (para abrir desde Storyline) ===== */
+(function preloadFromURL(){
+  const u = new URL(window.location.href);
+  const expr = u.searchParams.get('expr');
+  const a = u.searchParams.get('a');
+  if (expr) { $('#expr').value = expr; if (a !== null) $('#a').value = a; run(); }
+})();
+
+initExamples();
+resizeAndDraw();
+run();
+</script>
+</body>
+</html>
