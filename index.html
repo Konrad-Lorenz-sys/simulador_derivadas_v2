@@ -13,12 +13,20 @@
       --deriv:#FACC15; --fx:#7DD3FC; --tan:#22C55E; --bd:#2A2243;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(120deg,var(--bg1),var(--bg2));
-      font:15px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--ink)}
+    body{
+      margin:0;background:linear-gradient(120deg,var(--bg1),var(--bg2));
+      font:15px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--ink)
+    }
     .container{max-width:1200px;margin:24px auto;padding:24px}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+
+    /* Header con logo arriba, centrado */
+    header{
+      display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:16px;text-align:center
+    }
+    header img{max-height:80px;width:auto}
     header h1{font-size:20px;margin:0;font-weight:800;letter-spacing:.2px}
     header .tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--highlight);color:#3a3100}
+
     .grid{display:grid;grid-template-columns:380px 1fr;gap:18px}
     .card{background:rgba(24,17,42,.88);border:1px solid var(--bd);border-radius:16px;padding:16px;backdrop-filter: blur(4px)}
     label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
@@ -65,8 +73,10 @@
 
   <div class="container">
     <header>
+      <!-- Logo de la Konrad encima del título -->
+      <img src="https://www.konradlorenz.edu.co/wp-content/themes/andreco/images/logo-konrad.png" alt="Logo Konrad Lorenz">
       <h1>Simulador de Derivadas – Fundación Universitaria Konrad Lorenz</h1>
-      <span class="tag">Cálculo I · Módulo 3</span>
+      <span class="tag">Cálculo I · Módulos 1, 2 y 4</span>
     </header>
 
     <div class="grid">
@@ -215,12 +225,15 @@
           </details>
         </section>
 
+        <!-- Referencias con Symbolab -->
         <section class="card" aria-labelledby="refs-title">
           <h2 id="refs-title" style="margin:0 0 8px 0;font-size:16px">Referencias (OVA)</h2>
           <ul style="margin:8px 0 0 16px">
             <li><a class="ref" href="https://aprendeconalf.es/docencia/calculo/manual/derivadas-una-variable/" target="_blank" rel="noopener">Aprende con Alf – Derivadas en una variable</a></li>
             <li><a class="ref" href="https://www.uaeh.edu.mx/docencia/P_Presentaciones/prepa_ixtlahuaco/2019/4/Calculo.pdf" target="_blank" rel="noopener">UAEH – Presentación “Cálculo”</a></li>
             <li><a class="ref" href="https://openstax.org/books/cálculo-volumen-1/pages/4-introduccion" target="_blank" rel="noopener">OpenStax – Cap. 4 Aplicaciones de la derivada</a></li>
+            <!-- Enlace solicitado: Symbolab en Referencias -->
+            <li><a class="ref" href="https://es.symbolab.com/graphing-calculator" target="_blank" rel="noopener">Symbolab – Calculadora Gráfica (apoyo para graficar funciones)</a></li>
           </ul>
         </section>
       </div>
